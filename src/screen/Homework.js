@@ -46,7 +46,6 @@ const HomeworkScreen = () => {
   return (
     <View style={styles.screen}>
       <Header
-        onMenuPress={() => navigation.openDrawer()}
         onPortalPress={() => navigation.navigate('LeaveScreen')}
       />
 

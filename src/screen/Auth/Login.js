@@ -16,6 +16,8 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import GradientHeader from '../../components/GradientHeader';
 import GradientButton from '../../components/GradientButton';
+//import { loginUser } from 'src/api/auth.js';
+
 
 const { height } = Dimensions.get('window');
 
@@ -29,13 +31,13 @@ const LoginScreen = () => {
       return;
     }
 
-    if (Platform.OS === 'android') {
-      ToastAndroid.show('OTP sent to your registered mobile number.', ToastAndroid.SHORT);
-    } else {
-      Alert.alert('OTP Sent', 'OTP sent to your registered mobile number.');
-    }
+      if (Platform.OS === 'android') {
+        ToastAndroid.show('OTP sent to your registered mobile number.', ToastAndroid.SHORT);
+      } else {
+        Alert.alert('OTP Sent', 'OTP sent to your registered mobile number.');
+      }
 
-    navigation.navigate('OTPVerification', { mobile });
+      navigation.navigate('OTPVerification', { mobile });
   };
 
   return (

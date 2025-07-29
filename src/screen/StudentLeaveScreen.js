@@ -12,6 +12,8 @@ import {
   ToastAndroid,
   Dimensions,
   KeyboardAvoidingView,
+  TouchableWithoutFeedback,
+  Keyboard,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import Ionicons from 'react-native-vector-icons/Ionicons';
@@ -33,7 +35,6 @@ const LeaveScreen = () => {
   const [endDate, setEndDate] = useState(null);
   const [calendarVisible, setCalendarVisible] = useState(false);
   const [calMode, setCalMode] = useState('start');
-
   const [leaves, setLeaves] = useState([]);
 
   const formatDate = (d) =>
@@ -46,11 +47,9 @@ const LeaveScreen = () => {
       : '';
 
   const showSuccessMessage = (msg) => {
-    if (Platform.OS === 'android') {
-      ToastAndroid.show(msg, ToastAndroid.SHORT);
-    } else {
-      Alert.alert('Success', msg);
-    }
+    Platform.OS === 'android'
+      ? ToastAndroid.show(msg, ToastAndroid.SHORT)
+      : Alert.alert('Success', msg);
   };
 
   const onDateChange = (date) => {
@@ -102,7 +101,7 @@ const LeaveScreen = () => {
       rawStart: startDate,
       rawEnd: endDate,
       dateText,
-      status: 'Approved', // Example status
+      status: 'Approved',
     };
 
     const updatedLeaves = editingId
@@ -113,10 +112,7 @@ const LeaveScreen = () => {
     setShowForm(false);
     setEditingId(null);
     setMenuOpenId(null);
-
-    showSuccessMessage(
-      editingId ? 'Your leave has been updated successfully' : 'Your leave has been added successfully'
-    );
+    showSuccessMessage(editingId ? 'Leave updated' : 'Leave applied');
   };
 
   const handleDelete = (id) => {
@@ -127,144 +123,161 @@ const LeaveScreen = () => {
         style: 'destructive',
         onPress: () => {
           setLeaves((prev) => prev.filter((l) => l.id !== id));
-          showSuccessMessage('Your leave has been deleted successfully');
+          showSuccessMessage('Leave deleted');
         },
       },
     ]);
   };
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 40 }}>
-        <View style={styles.topNav}>
-          <Header
-            onMenuPress={() => navigation.openDrawer()}
-            onPortalPress={() => navigation.navigate('StudentDashboard')}
-          />
-        </View>
-
-        <Text style={styles.title}>Leaves</Text>
-
-        <TouchableOpacity style={styles.applyBtn} onPress={() => openForm()}>
-          <Text style={styles.applyBtnText}>Apply For Leave</Text>
-        </TouchableOpacity>
-
-        {showForm && (
-          <View style={styles.formCard}>
-            <Text style={styles.formTitle}>{editingId ? 'Update Leave' : 'Ask for Leave'}</Text>
-            <View style={styles.divider} />
-
-            <Text style={styles.label}>Reason</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Write your reason for leave"
-              value={reason}
-              onFocus={() => setCalendarVisible(false)}
-              onChangeText={setReason}
-            />
-
-            <Text style={styles.label}>Description</Text>
-            <TextInput
-              style={[styles.input, { height: 80 }]}
-              placeholder="Write the details for your reason"
-              multiline
-              onFocus={() => setCalendarVisible(false)}
-              value={description}
-              onChangeText={setDescription}
-            />
-
-            <Text style={styles.label}>Start On</Text>
-            <TouchableOpacity
-              onPress={() => {
-                setCalendarVisible(true);
-                setCalMode('start');
-              }}
-              style={styles.dateField}
-            >
-              <TextInput
-                style={styles.dateInput}
-                placeholder="Start date"
-                value={formatDate(startDate)}
-                editable={false}
-              />
-              <Icon name="calendar" size={20} color="#FF3B30" />
-            </TouchableOpacity>
-
-            <Text style={styles.label}>End On</Text>
-            <TouchableOpacity
-              onPress={() => {
-                setCalendarVisible(true);
-                setCalMode('end');
-              }}
-              style={styles.dateField}
-            >
-              <TextInput
-                style={styles.dateInput}
-                placeholder="End date"
-                value={formatDate(endDate)}
-                editable={false}
-              />
-              <Icon name="calendar" size={20} color="#FF3B30" />
-            </TouchableOpacity>
-
-            {calendarVisible && (
-              <CalendarPicker
-                startFromMonday
-                minDate={calMode === 'end' && startDate ? new Date(startDate) : new Date()}
-                onDateChange={onDateChange}
-                width={width * 0.9}
-              />
-            )}
-
-            <View style={styles.buttonRow}>
-              <TouchableOpacity style={styles.cancelBtn} onPress={() => setShowForm(false)}>
-                <Text style={styles.cancelText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.applyBtnCard} onPress={handleSave}>
-                <Text style={styles.applyBtnTextCard}>{editingId ? 'Update' : 'Apply'}</Text>
-              </TouchableOpacity>
-            </View>
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
+       <View style={styles.topNav}>
+            <Header onPortalPress={() => navigation.navigate('StudentDashboard')} />
           </View>
-        )}
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <ScrollView
+          style={styles.container}
+          contentContainerStyle={{ paddingBottom: 60 }}
+        >
+         
 
-        <Text style={styles.subtitle}>Recent</Text>
-        {leaves.map((item) => (
-          <View key={item.id} style={styles.card}>
-            <View style={styles.cardHeader}>
-              <Text style={styles.cardDate}>Leave Date: {item.dateText}</Text>
+          <Text style={styles.title}>Leaves</Text>
+
+          <TouchableOpacity style={styles.applyBtn} onPress={() => openForm()}>
+            <Text style={styles.applyBtnText}>Apply For Leave</Text>
+          </TouchableOpacity>
+
+          {showForm && (
+            <View style={styles.formCard}>
+              <Text style={styles.formTitle}>{editingId ? 'Update Leave' : 'Ask for Leave'}</Text>
+              <View style={styles.divider} />
+
+              <Text style={styles.label}>Reason</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Write your reason for leave"
+                value={reason}
+                onFocus={() => setCalendarVisible(false)}
+                onChangeText={setReason}
+              />
+
+              <Text style={styles.label}>Description</Text>
+              <TextInput
+                style={[styles.input, { height: 80 }]}
+                placeholder="Write the details for your reason"
+                multiline
+                value={description}
+                onFocus={() => setCalendarVisible(false)}
+                onChangeText={setDescription}
+              />
+
+              <Text style={styles.label}>Start On</Text>
+              <TouchableOpacity
+                onPress={() => {
+                  setCalendarVisible(true);
+                  setCalMode('start');
+                }}
+                style={styles.dateField}
+              >
+                <TextInput
+                  style={styles.dateInput}
+                  placeholder="Start date"
+                  value={formatDate(startDate)}
+                  editable={false}
+                />
+                <Icon name="calendar" size={20} color="#FF3B30" />
+              </TouchableOpacity>
+
+              <Text style={styles.label}>End On</Text>
+              <TouchableOpacity
+                onPress={() => {
+                  setCalendarVisible(true);
+                  setCalMode('end');
+                }}
+                style={styles.dateField}
+              >
+                <TextInput
+                  style={styles.dateInput}
+                  placeholder="End date"
+                  value={formatDate(endDate)}
+                  editable={false}
+                />
+                <Icon name="calendar" size={20} color="#FF3B30" />
+              </TouchableOpacity>
+
+              {calendarVisible && (
+                <CalendarPicker
+                  startFromMonday
+                  minDate={calMode === 'end' && startDate ? new Date(startDate) : new Date()}
+                  onDateChange={onDateChange}
+                  width={width * 0.9}
+                />
+              )}
+
+              <View style={styles.buttonRow}>
+                <TouchableOpacity style={styles.cancelBtn} onPress={() => setShowForm(false)}>
+                  <Text style={styles.cancelText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.applyBtnCard} onPress={handleSave}>
+                  <Text style={styles.applyBtnTextCard}>{editingId ? 'Update' : 'Apply'}</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
+
+          <Text style={styles.subtitle}>Recent</Text>
+
+          {leaves.map((item) => (
+            <View key={item.id} style={styles.card}>
+              <View style={styles.cardHeader}>
+                <Text style={styles.cardDate}>Leave Date: {item.dateText}</Text>
+                <TouchableOpacity onPress={() => setMenuOpenId(menuOpenId === item.id ? null : item.id)}>
+                  <Ionicons name="ellipsis-vertical" size={20} color="#555" />
+                </TouchableOpacity>
+              </View>
+
               <View style={styles.statusBadge}>
                 <Text style={styles.statusText}>{item.status}</Text>
               </View>
+
+              <View style={styles.dividerThin} />
+
+              <Text style={styles.cardReason}>{item.reason}</Text>
+              <Text style={styles.cardDesc}>
+                <Text style={{ fontWeight: 'bold' }}>Description: </Text>
+                {item.description}
+              </Text>
+
+              {menuOpenId === item.id && (
+                <View style={styles.menu}>
+                  <TouchableOpacity onPress={() => openForm(item)}>
+                    <Text style={styles.menuText}>Edit</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => handleDelete(item.id)}>
+                    <Text style={[styles.menuText, { color: 'red' }]}>Delete</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
             </View>
-
-            <View style={styles.dividerThin} />
-
-            <Text style={styles.cardReason}>{item.reason}</Text>
-            <Text style={styles.cardDesc}>
-              <Text style={{ fontWeight: 'bold' }}>Description:</Text> {item.description}
-            </Text>
-
-            {menuOpenId === item.id && (
-              <View style={styles.menu}>
-                <TouchableOpacity onPress={() => openForm(item)}>
-                  <Text style={styles.menuText}>Edit</Text>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => handleDelete(item.id)}>
-                  <Text style={[styles.menuText, { color: 'red' }]}>Delete</Text>
-                </TouchableOpacity>
-              </View>
-            )}
-          </View>
-        ))}
-      </ScrollView>
+          ))}
+        </ScrollView>
+      </TouchableWithoutFeedback>
     </KeyboardAvoidingView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { padding: 16, backgroundColor: '#fff', flex: 1 },
-  topNav: { marginBottom: 16 },
-  title: { fontSize: 22, fontWeight: 'bold', marginTop: 10 },
+  container: {
+    paddingHorizontal: 16,
+    paddingTop: 20,
+    backgroundColor: '#fff',
+    flex: 1,
+  },
+  //topNav: { marginBottom: 16 },
+  title: { fontSize: 22, fontWeight: 'bold' },
 
   applyBtn: {
     backgroundColor: '#FF3B30',
@@ -346,10 +359,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   statusBadge: {
+    alignSelf: 'flex-start',
     backgroundColor: '#FF3B30',
     paddingHorizontal: 10,
     paddingVertical: 2,
     borderRadius: 12,
+    marginTop: 4,
   },
   statusText: {
     color: '#fff',

@@ -14,22 +14,23 @@ import LeaveScreen from './src/screen/StudentLeaveScreen';
 import SidebarScreen from './src/screen/side';
 import OnboardingScreen from './src/screen/OnboardingScreen';
   
-const Stack = createNativeStackNavigator()
+const Stack = createNativeStackNavigator();
+
 const App = () => {
   return (
     <NavigationContainer>
-        <Stack.Navigator initialRouteName="SplashScreen" screenOptions={{ headerShown: false }}>
-            <Stack.Screen name="OnboardingScreen" component={OnboardingScreen}/>
-            <Stack.Screen name="SplashScreen" component={SplashScreen}/>
-            <Stack.Screen name="LoginScreen" component={LoginScreen}/>
-            <Stack.Screen name="OTPVerification" component={OTPVerification}/>
-            <Stack.Screen name="StudentDashboard" component={StudentDashboard}/>
-            <Stack.Screen name="StudentAttendance" component={StudentAttendance}/>
-            <Stack.Screen name="AnnouncementScreen" component={AnnouncementScreen}/>
-            <Stack.Screen name="HomeworkScreen" component={HomeworkScreen}/>
-            <Stack.Screen name="LeaveScreen" component={LeaveScreen}/>
-            <Stack.Screen name="SidebarScreen" component={SidebarScreen}/>
-        </Stack.Navigator>
+      <Stack.Navigator initialRouteName="SplashScreen" screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="OnboardingScreen" component={OnboardingScreen}/>
+        <Stack.Screen name="SplashScreen" component={SplashScreen}/>
+        <Stack.Screen name="LoginScreen" component={LoginScreen}/>
+        <Stack.Screen name="OTPVerification" component={OTPVerification}/>
+        <Stack.Screen name="StudentDashboard" component={StudentDashboard}/>
+        <Stack.Screen name="StudentAttendance" component={StudentAttendance}/>
+        <Stack.Screen name="AnnouncementScreen" component={AnnouncementScreen}/>
+        <Stack.Screen name="HomeworkScreen" component={HomeworkScreen}/>
+        <Stack.Screen name="LeaveScreen" component={LeaveScreen}/>
+        <Stack.Screen name="SidebarScreen" component={SidebarScreen}/>
+      </Stack.Navigator>
     </NavigationContainer>
   )
 }

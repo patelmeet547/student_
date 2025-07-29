@@ -7,6 +7,7 @@ import {
   StyleSheet,
   Dimensions,
   TouchableOpacity,
+  StatusBar,
 } from 'react-native';
 import { PieChart as DonutChart } from 'react-native-svg-charts';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -173,62 +174,67 @@ const StudentAttendance = () => {
   };
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 40 }}>
-      {/* Fixed Header */}
+    <View style={{ flex: 1, backgroundColor: '#fff' }}>
+      <StatusBar backgroundColor="#fff" barStyle="dark-content" />
       <Header
         title="Attendance"
         onMenuPress={() => navigation.openDrawer()}
-        onPortalPress={() => navigation.navigate('AnnouncementScreen')} // adjust navigation target
+        onPortalPress={() => navigation.navigate('AnnouncementScreen')}
       />
+      <ScrollView contentContainerStyle={styles.scrollBody}>
+        <Text style={styles.attendanceHeading}>Attendance</Text>
 
-      <Text style={styles.attendanceHeading}>Attendance</Text>
-
-      {/* Calendar View */}
-      <View style={styles.card}>
-        <CalendarBar
-          label={calendarMonth.format('MMMM YYYY')}
-          onPrev={() => setCalendarMonth((p) => moment(p).subtract(1, 'month'))}
-          onNext={() => setCalendarMonth((p) => moment(p).add(1, 'month'))}
-        />
-        {renderCalendarGrid()}
-      </View>
-
-      {/* Donut Chart */}
-      <View style={styles.card}>
-        <CalendarBar
-          label={chartMonth.format('MMMM YYYY')}
-          onPrev={() => setChartMonth((p) => moment(p).subtract(1, 'month'))}
-          onNext={() => setChartMonth((p) => moment(p).add(1, 'month'))}
-        />
-        <DonutChart style={{ height: 180 }} data={chartData} innerRadius="60%" outerRadius="95%" labelRadius="90%">
-          <Labels />
-        </DonutChart>
-        <View style={styles.legend}>
-          {chartData.map((item, i) => {
-            const total = chartData.reduce((sum, d) => sum + d.value, 0);
-            const pct = total > 0 ? Math.round((item.value / total) * 100) : 0;
-            return (
-              <View key={i} style={styles.legendRow}>
-                <View style={styles.legendLeft}>
-                  <View style={[styles.legendDot, { backgroundColor: item.svg.fill }]} />
-                  <Text style={styles.legendLabel}>{item.label}</Text>
-                </View>
-                <Text style={styles.legendCount}>{item.value}</Text>
-                <Text style={styles.legendValue}>{pct}%</Text>
-              </View>
-            );
-          })}
+        {/* Calendar View */}
+        <View style={styles.card}>
+          <CalendarBar
+            label={calendarMonth.format('MMMM YYYY')}
+            onPrev={() => setCalendarMonth((p) => moment(p).subtract(1, 'month'))}
+            onNext={() => setCalendarMonth((p) => moment(p).add(1, 'month'))}
+          />
+          {renderCalendarGrid()}
         </View>
-      </View>
 
-      {/* Attendance Table */}
-      {renderTable()}
-    </ScrollView>
+        {/* Donut Chart */}
+        <View style={styles.card}>
+          <CalendarBar
+            label={chartMonth.format('MMMM YYYY')}
+            onPrev={() => setChartMonth((p) => moment(p).subtract(1, 'month'))}
+            onNext={() => setChartMonth((p) => moment(p).add(1, 'month'))}
+          />
+          <DonutChart style={{ height: 180 }} data={chartData} innerRadius="60%" outerRadius="95%" labelRadius="90%">
+            <Labels />
+          </DonutChart>
+          <View style={styles.legend}>
+            {chartData.map((item, i) => {
+              const total = chartData.reduce((sum, d) => sum + d.value, 0);
+              const pct = total > 0 ? Math.round((item.value / total) * 100) : 0;
+              return (
+                <View key={i} style={styles.legendRow}>
+                  <View style={styles.legendLeft}>
+                    <View style={[styles.legendDot, { backgroundColor: item.svg.fill }]} />
+                    <Text style={styles.legendLabel}>{item.label}</Text>
+                  </View>
+                  <Text style={styles.legendCount}>{item.value}</Text>
+                  <Text style={styles.legendValue}>{pct}%</Text>
+                </View>
+              );
+            })}
+          </View>
+        </View>
+
+        {/* Attendance Table */}
+        {renderTable()}
+      </ScrollView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { backgroundColor: '#fff', padding: 20 },
+  scrollBody: {
+    paddingBottom: 40,
+    paddingHorizontal: 16,
+    backgroundColor: '#fff',
+  },
   attendanceHeading: { fontSize: 18, fontWeight: '700', marginVertical: 10 },
   card: {
     backgroundColor: '#fdfcfe',
