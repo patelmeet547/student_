@@ -2,8 +2,12 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import Svg, { G, Circle, Text as SvgText } from 'react-native-svg';
+import {
+  widthPercentageToDP as wp,
+  heightPercentageToDP as hp,
+} from 'react-native-responsive-screen';
 
-const DonutChart = ({ data, radius = 80, strokeWidth = 30 }) => {
+const DonutChart = ({ data, radius = wp('20%'), strokeWidth = wp('7%') }) => {
   const total = data.reduce((sum, item) => sum + item.value, 0);
   const cx = radius + strokeWidth;
   const cy = radius + strokeWidth;
@@ -34,9 +38,11 @@ const DonutChart = ({ data, radius = 80, strokeWidth = 30 }) => {
     );
   });
 
+  const svgSize = 2 * (radius + strokeWidth);
+
   return (
     <View style={styles.container}>
-      <Svg width={2 * (radius + strokeWidth)} height={2 * (radius + strokeWidth)}>
+      <Svg width={svgSize} height={svgSize}>
         <G>
           {renderSlices}
           <SvgText
@@ -44,7 +50,7 @@ const DonutChart = ({ data, radius = 80, strokeWidth = 30 }) => {
             y={cy}
             textAnchor="middle"
             alignmentBaseline="middle"
-            fontSize="18"
+            fontSize={wp('5%')}
             fontWeight="bold"
             fill="#000"
           >
@@ -56,7 +62,7 @@ const DonutChart = ({ data, radius = 80, strokeWidth = 30 }) => {
         {data.map((item, index) => (
           <View key={index} style={styles.legendItem}>
             <View style={[styles.legendDot, { backgroundColor: item.color }]} />
-            <Text>{item.label}: {item.value}</Text>
+            <Text style={styles.legendText}>{item.label}: {item.value}</Text>
           </View>
         ))}
       </View>
@@ -67,22 +73,26 @@ const DonutChart = ({ data, radius = 80, strokeWidth = 30 }) => {
 const styles = StyleSheet.create({
   container: {
     alignItems: 'center',
-    paddingVertical: 10,
+    paddingVertical: hp('2%'),
   },
   legend: {
-    marginTop: 10,
-    paddingHorizontal: 10,
+    marginTop: hp('2%'),
+    paddingHorizontal: wp('5%'),
+    width: '100%',
   },
   legendItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 4,
+    marginBottom: hp('1%'),
   },
   legendDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    marginRight: 8,
+    width: wp('3%'),
+    height: wp('3%'),
+    borderRadius: wp('1.5%'),
+    marginRight: wp('2%'),
+  },
+  legendText: {
+    fontSize: wp('3.8%'),
   },
 });
 

@@ -3,11 +3,15 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
+import {
+  widthPercentageToDP as wp,
+  heightPercentageToDP as hp,
+} from 'react-native-responsive-screen';
 
 const GradientHeader = ({ title = 'Screen Title' }) => {
   return (
     <LinearGradient
-      colors={['rgba(185, 12, 21, 0.1)', '#ffffff']} // 10% pink to white
+      colors={['rgba(185, 12, 21, 0.1)', '#ffffff']}
       start={{ x: 0.5, y: 0 }}
       end={{ x: 0.5, y: 1 }}
       style={styles.container}
@@ -20,15 +24,15 @@ const GradientHeader = ({ title = 'Screen Title' }) => {
 
 const styles = StyleSheet.create({
   container: {
-    paddingTop: 50,
-    paddingBottom: 20,
+    paddingTop: hp('6%'),       // responsive top padding
+    paddingBottom: hp('2.5%'),  // responsive bottom padding
     alignItems: 'center',
     justifyContent: 'flex-end',
     width: '100%',
     position: 'relative',
   },
   title: {
-    fontSize: 22,
+    fontSize: wp('5.5%'),       // responsive font size
     fontWeight: 'bold',
     color: '#000',
   },
@@ -37,8 +41,8 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    height: 1,
-    backgroundColor: '#fb344b', // Pink border (Figma stroke)
+    height: hp('0.2%'),         // responsive border thickness
+    backgroundColor: '#fb344b',
   },
 });
 

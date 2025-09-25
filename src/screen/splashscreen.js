@@ -1,13 +1,12 @@
-// SplashScreen.js
-
 import React, { useEffect } from 'react';
-import { View, Image, StyleSheet } from 'react-native';
+import { View, Image, StyleSheet, Dimensions } from 'react-native';
+
+const { width, height } = Dimensions.get('window');
 
 const SplashScreen = ({ navigation }) => {
   useEffect(() => {
-    console.log('navigation:', navigation);
     const timer = setTimeout(() => {
-      navigation.replace('OnboardingScreen'); // Navigate after 5 seconds
+      navigation.replace('OnboardingScreen'); // Navigate after 10 seconds
     }, 5000);
 
     return () => clearTimeout(timer);
@@ -16,7 +15,7 @@ const SplashScreen = ({ navigation }) => {
   return (
     <View style={styles.container}>
       <Image
-        source={require('D:/reactnative/student_erp/src/assets/img/logo.png')} 
+        source={require('../assets/img/logo.png')}
         style={styles.logo}
         resizeMode="contain"
       />
@@ -29,12 +28,12 @@ export default SplashScreen;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#ffffff',
+    backgroundColor: '#f5f5f5',
     justifyContent: 'center',
     alignItems: 'center',
   },
   logo: {
-    width: 250,
-    height: 250,
+    width: width * 0.5,   // ✅ 50% of screen width
+    height: width * 0.5,  // ✅ Keep it square
   },
 });

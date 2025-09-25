@@ -1,4 +1,5 @@
-import React from 'react';
+// AnnouncementScreen.js
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -6,62 +7,60 @@ import {
   StyleSheet,
   StatusBar,
   TouchableOpacity,
+  useWindowDimensions,
 } from 'react-native';
-import LinearGradient from 'react-native-linear-gradient';
 import moment from 'moment';
 import { useNavigation } from '@react-navigation/native';
 import Header from '../components/Header';
+import { useAuth } from '../context/AuthContext';
+import SimpleLoader from './Loading';
+
 
 const AnnouncementScreen = () => {
   const navigation = useNavigation();
+  const { userData } = useAuth();
+  const [announcements, setAnnouncements] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const { width } = useWindowDimensions();
 
-  const announcements = [
-    {
-      id: 1,
-      issuer: 'Lewis Hamilton',
-      title: 'Raksha Bandhan',
-      date: '2025-06-27',
-      description:
-        'Welcome to Celebrate Rakshabandhan! A day of love, laughter & lifelong bonds – join the festive fun!',
-      status: 'UPCOMING',
-    },
-    {
-      id: 2,
-      issuer: 'Lewis Hamilton',
-      title: 'Raksha Bandhan',
-      date: '2025-06-24',
-      description:
-        'Welcome to Celebrate Rakshabandhan! A day of love, laughter & lifelong bonds – join the festive fun!',
-      status: 'COMPLETED',
-    },
-    {
-      id: 3,
-      issuer: 'Lewis Hamilton',
-      title: 'Raksha Bandhan',
-      date: '2025-06-23',
-      description:
-        'Welcome to Celebrate Rakshabandhan! A day of love, laughter & lifelong bonds – join the festive fun!',
-      status: 'COMPLETED',
-    },
-  ];
+  useEffect(() => {
+    const fetchAnnouncements = async () => {
+      if (!userData?.class?._id) {
+        setError('User class ID not found');
+        setLoading(false);
+        return;
+      }
+      try {
+        const res = await fetch(`https://quantumflux.in:5001/class/${userData.class._id}/announcement`);
+        if (!res.ok) throw new Error('Failed to fetch announcements');
+        const data = await res.json();
+        setAnnouncements(data);
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchAnnouncements();
+  }, [userData]);
 
-  const upcoming = announcements.filter(item => item.status === 'UPCOMING');
-  const recent = announcements.filter(item => item.status === 'COMPLETED');
+  if (loading || error) {
+    return (
+      <View style={styles.centered}>
+        <SimpleLoader />
+      </View>
+    );
+  }
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#fff' }}>
+    <View style={styles.screen}>
       <StatusBar barStyle="dark-content" />
-      <Header onMenuPress={() => navigation.openDrawer()} onPortalPress={()=>navigation.navigate('HomeworkScreen')}/>
-
-      <ScrollView contentContainerStyle={styles.container}>
+      <Header onMenuPress={() => navigation.openDrawer()} />
+      <ScrollView contentContainerStyle={[styles.container, { paddingHorizontal: width * 0.05 }]}>
         <Text style={styles.heading}>Announcements</Text>
-        {upcoming.map(item => (
-          <AnnouncementCard key={item.id} item={item} />
-        ))}
-
-        <Text style={styles.subheading}>Recent</Text>
-        {recent.map(item => (
-          <AnnouncementCard key={item.id} item={item} />
+        {announcements.map(item => (
+          <AnnouncementCard key={item._id} item={item} />
         ))}
       </ScrollView>
     </View>
@@ -69,50 +68,49 @@ const AnnouncementScreen = () => {
 };
 
 const AnnouncementCard = ({ item }) => {
+  const [expanded, setExpanded] = useState(false);
   return (
     <View style={styles.card}>
       <View style={styles.cardNavbar}>
-        <Text style={styles.issuerText}>Issued by: {item.issuer}</Text>
-        <LinearGradient
-          colors={['#EECFFF', '#F2E8FD']}
-          style={styles.statusBadge}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-        >
-          <Text style={styles.statusText}>{item.status}</Text>
-        </LinearGradient>
+        <Text style={styles.issuerText}>Issued by: {item.user?.name || 'Unknown'}</Text>
       </View>
-
       <View style={styles.titleRow}>
         <Text style={styles.cardTitle}>{item.title}</Text>
-        <Text style={styles.dateText}>
-          {' '}
-          · {moment(item.date).format('D MMMM, YYYY')}
-        </Text>
       </View>
-
-      <Text style={styles.cardDescription}>
-        <Text style={styles.descLabel}>Description: </Text>
-        {item.description}
-      </Text>
+      {expanded && (
+        <Text style={styles.cardDescription}>
+          {/* <Text style={styles.descLabel}>Description: </Text> */}
+          {item.description}
+        </Text>
+      )}
+      <TouchableOpacity onPress={() => setExpanded(!expanded)}>
+        <Text style={styles.readMore}>
+          {expanded ? 'Show Less' : 'Click to Read More...'}
+        </Text>
+      </TouchableOpacity>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    backgroundColor: '#f5f5f5',
+  },
+  centered: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   container: {
-    padding: 20,
-    backgroundColor: '#fff',
+    paddingTop: 20,
+    paddingBottom: 40,
   },
   heading: {
     fontSize: 24,
     fontWeight: '700',
     marginBottom: 16,
-  },
-  subheading: {
-    fontSize: 20,
-    fontWeight: '600',
-    marginVertical: 12,
+    textAlign: 'center',
   },
   card: {
     backgroundColor: '#fff',
@@ -127,7 +125,6 @@ const styles = StyleSheet.create({
   },
   cardNavbar: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
     borderBottomWidth: 1,
     borderBottomColor: '#d42222',
@@ -136,18 +133,8 @@ const styles = StyleSheet.create({
   },
   issuerText: {
     fontStyle: 'italic',
-    color: '#838181ff',
+    color: '#838181',
     fontSize: 13,
-  },
-  statusBadge: {
-    paddingVertical: 4,
-    paddingHorizontal: 10,
-    borderRadius: 12,
-  },
-  statusText: {
-    fontSize: 12,
-    color: '#e03333ff',
-    fontWeight: '800',
   },
   titleRow: {
     flexDirection: 'row',
@@ -158,11 +145,8 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     color: '#000',
-  },
-  dateText: {
-    fontSize: 13,
-    color: '#666',
-    marginLeft: 6,
+    flex: 1,
+    flexWrap: 'wrap',
   },
   cardDescription: {
     fontSize: 14,
@@ -171,6 +155,11 @@ const styles = StyleSheet.create({
   },
   descLabel: {
     fontWeight: 'bold',
+  },
+  readMore: {
+    color: '#d42222',
+    marginTop: 6,
+    fontSize: 13,
   },
 });
 

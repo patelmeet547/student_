@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -9,39 +9,57 @@ import {
 import moment from 'moment';
 import { useNavigation } from '@react-navigation/native';
 import Header from '../components/Header';
+import { useAuth } from '../context/AuthContext';
+import SimpleLoader from './Loading';
+import { TouchableOpacity } from 'react-native';
 
-const { width } = Dimensions.get('window');
+
+const { width, height } = Dimensions.get('window');
 
 const HomeworkScreen = () => {
   const navigation = useNavigation();
+  const { userData } = useAuth();
+  const [homeworkList, setHomeworkList] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  const homeworkList = [
-    {
-      id: 1,
-      title: 'Raksha Bandhan',
-      date: '2025-06-27',
-      description:
-        'Welcome to Celebrate Rakshabandhan! A day of love, laughter & lifelong bonds – join the festive fun!',
-    },
-    {
-      id: 2,
-      title: 'Raksha Bandhan',
-      date: '2025-06-24',
-      description:
-        'Welcome to Celebrate Rakshabandhan! A day of love, laughter & lifelong bonds – join the festive fun!',
-    },
-    {
-      id: 3,
-      title: 'Raksha Bandhan',
-      date: '2025-06-23',
-      description:
-        'Welcome to Celebrate Rakshabandhan! A day of love, laughter & lifelong bonds – join the festive fun!',
-    },
-  ];
+  useEffect(() => {
+    const fetchHomework = async () => {
+      if (!userData?.class?._id) {
+        setError('User class ID not found');
+        setLoading(false);
+        return;
+      }
+      try {
+        const res = await fetch(`https://quantumflux.in:5001/class/${userData.class._id}/homework`);
+        if (!res.ok) throw new Error('Failed to fetch homework');
+        const data = await res.json();
+        setHomeworkList(data);
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchHomework();
+  }, [userData]);
 
-  // Split into "Upcoming" (latest item) and "Recent" (rest of items)
-  const upcoming = homeworkList.slice(0, 1);
-  const recent = homeworkList.slice(1);
+  if (loading) {
+    return (
+      <View style={styles.centered}>
+        <SimpleLoader />
+
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={styles.centered}>
+        <Text>Error: {error}</Text>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.screen}>
@@ -49,16 +67,10 @@ const HomeworkScreen = () => {
         onMenuPress={() => navigation.openDrawer()}
         onPortalPress={() => navigation.navigate('LeaveScreen')}
       />
-
       <ScrollView contentContainerStyle={styles.container}>
         <Text style={styles.heading}>Homework</Text>
-        {upcoming.map(item => (
-          <HomeworkCard key={item.id} item={item} />
-        ))}
-
-        {recent.length > 0 && <Text style={styles.subheading}>Recent</Text>}
-        {recent.map(item => (
-          <HomeworkCard key={item.id} item={item} />
+        {homeworkList.map(item => (
+          <HomeworkCard key={item._id} item={item} />
         ))}
       </ScrollView>
     </View>
@@ -66,22 +78,28 @@ const HomeworkScreen = () => {
 };
 
 const HomeworkCard = ({ item }) => {
+  const [expanded, setExpanded] = useState(false);
   return (
     <View style={styles.card}>
       <View style={styles.cardNavbar}>
         <Text style={styles.issuerText}>
-          Submit on: {moment(item.date).format('D MMMM, YYYY')}
+          {moment(item.createdAt).format('D MMMM, YYYY')}
         </Text>
       </View>
-
       <View style={styles.titleRow}>
         <Text style={styles.cardTitle}>{item.title}</Text>
       </View>
-
-      <Text style={styles.cardDescription}>
-        <Text style={styles.descLabel}>Description: </Text>
-        {item.description}
-      </Text>
+      {expanded && (
+        <Text style={styles.cardDescription}>
+          {/* <Text style={styles.descLabel}>Description: </Text> */}
+          {item.description}
+        </Text>
+      )}
+      <TouchableOpacity onPress={() => setExpanded(!expanded)}>
+        <Text style={styles.readMore}>
+          {expanded ? 'Show Less' : 'Click to Read More...'}
+        </Text>
+      </TouchableOpacity>
     </View>
   );
 };
@@ -91,58 +109,64 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#fff',
   },
+  readMore: {
+    color: '#d42222',
+    marginTop: 6,
+    fontSize: 13,
+  },
+  centered: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   container: {
-    paddingHorizontal: width * 0.05, // 5% padding
-    paddingTop: 20,
-    paddingBottom: 30,
-    backgroundColor: '#fff',
+    paddingHorizontal: width * 0.05,
+    paddingTop: height * 0.02,
+    paddingBottom: height * 0.04,
+    backgroundColor: '#f5f5f5',
   },
   heading: {
-    fontSize: width * 0.06, // ~24px for standard devices
+    fontSize: width * 0.06,
     fontWeight: '700',
-    marginBottom: 16,
-  },
-  subheading: {
-    fontSize: width * 0.05,
-    fontWeight: '600',
-    marginVertical: 12,
+    marginBottom: height * 0.02,
+    color: '#000',
   },
   card: {
     backgroundColor: '#fff',
     borderRadius: 12,
-    padding: width * 0.04, // dynamic padding
-    marginBottom: 16,
+    padding: width * 0.045,
+    marginBottom: height * 0.02,
     shadowColor: '#000',
     shadowOpacity: 0.05,
     shadowRadius: 6,
     shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
+    elevation: 3,
   },
   cardNavbar: {
     borderBottomWidth: 1,
     borderBottomColor: '#d42222',
-    paddingBottom: 6,
-    marginBottom: 12,
+    paddingBottom: height * 0.008,
+    marginBottom: height * 0.015,
   },
   issuerText: {
     fontStyle: 'italic',
     color: '#838181',
-    fontSize: width * 0.034, // ~13px
+    fontSize: width * 0.034,
   },
   titleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 6,
+    marginBottom: height * 0.008,
   },
   cardTitle: {
-    fontSize: width * 0.04, // ~16px
+    fontSize: width * 0.045,
     fontWeight: '700',
     color: '#000',
   },
   cardDescription: {
-    fontSize: width * 0.035, // ~14px
+    fontSize: width * 0.038,
     color: '#444',
-    lineHeight: 20,
+    lineHeight: 22,
   },
   descLabel: {
     fontWeight: 'bold',

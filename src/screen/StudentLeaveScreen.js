@@ -1,5 +1,5 @@
 // 📁 LeaveScreen.js
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -18,11 +18,15 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 import CalendarPicker from 'react-native-calendar-picker';
 import { useNavigation } from '@react-navigation/native';
 import Header from '../components/Header';
+import SimpleLoader from './Loading';
+
+import { useAuth } from '../context/AuthContext';
 
 const { width } = Dimensions.get('window');
 
 const LeaveScreen = () => {
   const navigation = useNavigation();
+  const { userData } = useAuth();
 
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -33,8 +37,31 @@ const LeaveScreen = () => {
   const [endDate, setEndDate] = useState(null);
   const [calendarVisible, setCalendarVisible] = useState(false);
   const [calMode, setCalMode] = useState('start');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   const [leaves, setLeaves] = useState([]);
+
+  useEffect(() => {
+    const fetchLeaves = async () => {
+      if (!userData || !userData._id) {
+        setError('User ID not found');
+        setLoading(false);
+        return;
+      }
+      try {
+        const res = await fetch(`https://quantumflux.in:5001/user/${userData._id}/leave`);
+        if (!res.ok) throw new Error('Failed to fetch leaves');
+        const data = await res.json();
+        setLeaves(data);
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchLeaves();
+  }, [userData]);
 
   const formatDate = (d) =>
     d
@@ -68,11 +95,11 @@ const LeaveScreen = () => {
 
   const openForm = (leave = null) => {
     if (leave) {
-      setReason(leave.reason);
+      setReason(leave.title);
       setDescription(leave.description);
-      setStartDate(leave.rawStart);
-      setEndDate(leave.rawEnd);
-      setEditingId(leave.id);
+      setStartDate(leave.startDate);
+      setEndDate(leave.endDate);
+      setEditingId(leave._id);
     } else {
       setReason('');
       setDescription('');
@@ -84,54 +111,107 @@ const LeaveScreen = () => {
     setShowForm(true);
   };
 
-  const handleSave = () => {
+  // CREATE or UPDATE leave
+  const handleSave = async () => {
     if (!reason || !startDate || !endDate) {
       Alert.alert('Error', 'Please fill all fields');
       return;
     }
-
-    const dateText =
-      formatDate(startDate) === formatDate(endDate)
-        ? formatDate(startDate)
-        : `${formatDate(startDate)} - ${formatDate(endDate)}`;
-
-    const newEntry = {
-      id: editingId || Date.now(),
-      reason,
-      description,
-      rawStart: startDate,
-      rawEnd: endDate,
-      dateText,
-      status: 'Approved', // Example status
-    };
-
-    const updatedLeaves = editingId
-      ? leaves.map((l) => (l.id === editingId ? newEntry : l))
-      : [newEntry, ...leaves];
-
-    setLeaves(updatedLeaves);
-    setShowForm(false);
-    setEditingId(null);
-    setMenuOpenId(null);
-
-    showSuccessMessage(
-      editingId ? 'Your leave has been updated successfully' : 'Your leave has been added successfully'
-    );
+    try {
+      let url = `https://quantumflux.in:5001/user/${userData._id}/leave`;
+      let method = 'POST';
+      if (editingId) {
+        url += `/${editingId}`;
+        // method = 'PUT'; // Try PUT if POST fails for update
+        // method = 'PATCH'; // Try PATCH if needed
+        method = 'POST'; // Default: POST (as per your Postman)
+      }
+      const body = {
+        title: reason,
+        description,
+        startDate,
+        endDate,
+      };
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok && res.status !== 204) {
+        let errMsg = 'Failed to save leave';
+        try {
+          const errJson = await res.clone().json();
+          errMsg = errJson.message || JSON.stringify(errJson);
+        } catch (e) {
+          const errText = await res.text();
+          errMsg = errText;
+        }
+        Alert.alert('Error', errMsg);
+        setLoading(false);
+        return;
+      }
+      showSuccessMessage(editingId ? 'Your leave has been updated successfully' : 'Your leave has been added successfully');
+      setShowForm(false);
+      setEditingId(null);
+      setMenuOpenId(null);
+      // Refresh leave list
+      setLoading(true);
+      setError(null);
+      const leavesRes = await fetch(`https://quantumflux.in:5001/user/${userData._id}/leave`);
+      const leavesData = await leavesRes.json();
+      setLeaves(leavesData);
+      setLoading(false);
+      setMenuOpenId(null); 
+    } catch (err) {
+      Alert.alert('Error', err.message);
+    }
   };
 
-  const handleDelete = (id) => {
+  // DELETE leave
+  const handleDelete = async (id) => {
     Alert.alert('Delete', 'Are you sure you want to delete this leave?', [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Delete',
         style: 'destructive',
-        onPress: () => {
-          setLeaves((prev) => prev.filter((l) => l.id !== id));
-          showSuccessMessage('Your leave has been deleted successfully');
+        onPress: async () => {
+          try {
+            const res = await fetch(`https://quantumflux.in:5001/user/${userData._id}/leave/${id}`, {
+              method: 'DELETE',
+              headers: { 'Content-Type': 'application/json' },
+            });
+            if (!res.ok && res.status !== 204) throw new Error('Failed to delete leave');
+            showSuccessMessage('Your leave has been deleted successfully');
+            // Refresh leave list
+            setLoading(true);
+            setError(null);
+            const leavesRes = await fetch(`https://quantumflux.in:5001/user/${userData._id}/leave`);
+            const leavesData = await leavesRes.json();
+            setLeaves(leavesData);
+            setLoading(false); // <-- fix: stop loading after delete
+            setMenuOpenId(null); // <-- fix: close menu after delete
+          } catch (err) {
+            Alert.alert('Error', err.message);
+          }
         },
       },
     ]);
   };
+
+  if (loading) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <SimpleLoader />
+      </View>
+    );
+  }
+  if (error) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <Text>Error: {error}</Text>
+      </View>
+    );
+  }
 
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
@@ -228,50 +308,84 @@ const LeaveScreen = () => {
         )}
 
         <Text style={styles.subtitle}>Recent</Text>
-        {leaves.map((item) => (
-          <View key={item.id} style={styles.card}>
-            <View style={styles.cardHeader}>
-              <Text style={styles.cardDate}>Leave Date: {item.dateText}</Text>
-              <View style={styles.statusBadge}>
-                <Text style={styles.statusText}>{item.status}</Text>
+        {leaves.map((item) => {
+          // Format date as '26 - 29 June, 2025' or '26 June, 2025'
+          let dateText = '';
+          if (item.startDate && item.endDate && item.startDate !== item.endDate) {
+            const start = new Date(item.startDate);
+            const end = new Date(item.endDate);
+            if (start.getMonth() === end.getMonth() && start.getFullYear() === end.getFullYear()) {
+              dateText = `${start.getDate()} - ${end.getDate()} ${start.toLocaleString('default', { month: 'long' })}, ${start.getFullYear()}`;
+            } else {
+              dateText = `${formatDate(item.startDate)} - ${formatDate(item.endDate)}`;
+            }
+          } else if (item.startDate) {
+            const start = new Date(item.startDate);
+            dateText = `${start.getDate()} ${start.toLocaleString('default', { month: 'long' })}, ${start.getFullYear()}`;
+          }
+          // Show APPROVED badge only if approvedBy key exists and is not null/empty
+          const isApproved = item.approvedBy && Object.keys(item.approvedBy).length > 0;
+          return (
+            <View key={item._id} style={styles.card}>
+              <View style={styles.cardHeader}>
+                <Text style={styles.cardDate}>Leave Date: {dateText}</Text>
+                {isApproved ? (
+                  // Static 3-dot icon (disabled look)
+                  <Icon name="dots-vertical" size={22} color="#ccc" style={{ padding: 4, opacity: 0.5 }} />
+                ) : (
+                  <TouchableOpacity onPress={() => setMenuOpenId(menuOpenId === item._id ? null : item._id)}>
+                    <Icon name="dots-vertical" size={22} color="#FF3B30" style={{ padding: 4 }} />
+                  </TouchableOpacity>
+                )}
+                {isApproved && (
+                  <View style={[styles.statusBadge, { backgroundColor: '#fff', borderWidth: 1, borderColor: '#FF3B30', marginLeft: 8 }]}> 
+                    <Text style={[styles.statusText, { color: '#FF3B30', fontWeight: 'bold', fontSize: 12 }]}>APPROVED</Text>
+                  </View>
+                )}
               </View>
+              <View style={styles.dividerThin} />
+              <Text style={styles.cardReason}>{item.title}</Text>
+              <Text style={styles.cardDesc}>
+                <Text style={{ fontWeight: 'bold' }}>Description:</Text> {item.description}
+              </Text>
+              {/* Only show menu if NOT approved */}
+              {!isApproved && menuOpenId === item._id && (
+                <View style={[styles.menu, { right: 0, position: 'absolute', top: 40, zIndex: 10 }]}> 
+                  <TouchableOpacity onPress={() => openForm({
+                    ...item,
+                    reason: item.title,
+                    rawStart: item.startDate,
+                    rawEnd: item.endDate,
+                    id: item._id,
+                  })}>
+                    <Text style={styles.menuText}>Edit</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => handleDelete(item._id)}>
+                    <Text style={[styles.menuText, { color: 'red' }]}>Delete</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
             </View>
-
-            <View style={styles.dividerThin} />
-
-            <Text style={styles.cardReason}>{item.reason}</Text>
-            <Text style={styles.cardDesc}>
-              <Text style={{ fontWeight: 'bold' }}>Description:</Text> {item.description}
-            </Text>
-
-            {menuOpenId === item.id && (
-              <View style={styles.menu}>
-                <TouchableOpacity onPress={() => openForm(item)}>
-                  <Text style={styles.menuText}>Edit</Text>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => handleDelete(item.id)}>
-                  <Text style={[styles.menuText, { color: 'red' }]}>Delete</Text>
-                </TouchableOpacity>
-              </View>
-            )}
-          </View>
-        ))}
+            
+          );
+        })}
       </ScrollView>
     </KeyboardAvoidingView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { padding: 16, backgroundColor: '#fff', flex: 1 },
+  container: { backgroundColor: '#f5f5f5', flex: 1 },
   topNav: { marginBottom: 16 },
-  title: { fontSize: 22, fontWeight: 'bold', marginTop: 10 },
+  title: { fontSize: 22, fontWeight: 'bold', margin : 20 },
 
   applyBtn: {
     backgroundColor: '#FF3B30',
     borderRadius: 25,
     paddingVertical: 12,
     alignItems: 'center',
-    marginVertical: 20,
+    marginVertical: 10,
+    marginHorizontal: 20,
   },
   applyBtnText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
 
@@ -325,7 +439,7 @@ const styles = StyleSheet.create({
   },
   applyBtnTextCard: { color: '#fff', fontWeight: 'bold', fontSize: 15 },
 
-  subtitle: { fontSize: 18, fontWeight: 'bold', marginTop: 16, marginBottom: 8 },
+  subtitle: { fontSize: 18, fontWeight: 'bold', marginTop: 16, marginBottom: 8, marginLeft: 20 },
 
   card: {
     backgroundColor: '#fff',
@@ -339,6 +453,8 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowRadius: 5,
     elevation: 1,
+    marginTop: 20,
+    marginHorizontal: 20,
   },
   cardHeader: {
     flexDirection: 'row',

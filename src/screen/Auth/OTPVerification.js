@@ -15,17 +15,21 @@ import LinearGradient from 'react-native-linear-gradient';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import GradientButton from '../../components/GradientButton';
 import GradientHeader from '../../components/GradientHeader';
+import { verifyOtp } from './auth';
+import { useAuth } from '../../context/AuthContext';
 
-const screenWidth = Dimensions.get('window').width;
+const { width: screenWidth } = Dimensions.get('window');
+const baseFont = screenWidth * 0.045;
 
 const OTPVerification = () => {
-  const [otp, setOtp] = useState(Array(6).fill(''));
+  const [otp, setOtp] = useState(Array(4).fill(''));
   const [timer, setTimer] = useState(32);
   const [showResentMessage, setShowResentMessage] = useState(false);
   const inputsRef = useRef([]);
   const route = useRoute();
   const navigation = useNavigation();
   const mobile = route.params?.mobile || 'your number';
+  const { login } = useAuth();
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -44,35 +48,47 @@ const OTPVerification = () => {
   };
 
   const handleKeyPress = (e, index) => {
-    if (
-      e.nativeEvent.key === 'Backspace' &&
-      otp[index] === '' &&
-      index > 0
-    ) {
+    if (e.nativeEvent.key === 'Backspace' && otp[index] === '' && index > 0) {
       inputsRef.current[index - 1].focus();
     }
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     const enteredOtp = otp.join('');
-    console.log('Submitted OTP:', enteredOtp);
-
-    if (enteredOtp.length < 6) {
-      Alert.alert('Invalid OTP', 'Please enter the full 6-digit OTP');
+    if (enteredOtp.length < 4) {
+      Alert.alert('Invalid OTP', 'Please enter the full 4-digit OTP');
       return;
     }
 
-    if (enteredOtp === '123456') {
-      navigation.navigate('StudentDashboard');
-    } else {
-      Alert.alert('Error', 'Incorrect OTP, please try again');
+    try {
+      const user = await verifyOtp(mobile, enteredOtp);
+      if (user.role === 'student') {
+        await login(user);
+        navigation.replace('StudentDashboard');
+      } else {
+        Alert.alert(
+          'Access Denied', 
+          'You are not allowed to access this application. Only students are permitted.',
+          [
+            {
+              text: 'OK',
+              onPress: () => {
+                // Navigate back to login or initial screen
+                navigation.navigate('Login'); // or navigation.goBack();
+              }
+            }
+          ]
+        );
+      }
+    } catch (error) {
+      const errorMsg = error.message || 'Failed to verify OTP';
+      Alert.alert('Errorr', errorMsg);
     }
   };
 
   const handleResend = () => {
     setTimer(32);
     setShowResentMessage(true);
-    console.log('OTP Resent');
     setTimeout(() => setShowResentMessage(false), 2000);
   };
 
@@ -111,7 +127,7 @@ const OTPVerification = () => {
           <View style={styles.container}>
             <Text style={styles.title}>OTP Verification</Text>
             <Text style={styles.subtitle}>
-              Enter the code from the SMS we sent to +91 {mobile}
+              Enter the 4-digit code from the SMS we sent to +91 {mobile}
             </Text>
 
             <Text style={styles.timer}>
@@ -139,29 +155,31 @@ const OTPVerification = () => {
   );
 };
 
+const boxSize = screenWidth * 0.13;
+
 const styles = StyleSheet.create({
   scrollContainer: {
     flexGrow: 1,
     justifyContent: 'center',
-    paddingVertical: 30,
+    paddingVertical: screenWidth * 0.1,
   },
   container: {
-    paddingHorizontal: '5%',
+    paddingHorizontal: screenWidth * 0.07,
     alignItems: 'center',
   },
   title: {
-    fontSize: 28,
+    fontSize: baseFont + 10,
     fontWeight: 'bold',
     marginBottom: 30,
   },
   subtitle: {
-    fontSize: 16,
+    fontSize: baseFont,
     textAlign: 'center',
     marginBottom: 15,
     color: '#000',
   },
   timer: {
-    fontSize: 16,
+    fontSize: baseFont,
     color: '#FB344B',
     marginBottom: 20,
     marginTop: 10,
@@ -172,13 +190,13 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: 25,
     marginTop: 10,
-    width: '100%',
+    width: '80%',
   },
   gradientBox: {
     borderRadius: 10,
-    width: 48,
-    height: 48,
-    marginHorizontal: 3,
+    width: boxSize,
+    height: boxSize,
+    marginHorizontal: 4,
     justifyContent: 'center',
     alignItems: 'center',
     padding: 2,
@@ -188,23 +206,23 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     width: '100%',
     height: '100%',
-    fontSize: 22,
+    fontSize: baseFont + 4,
     textAlign: 'center',
     color: '#000',
   },
   resendText: {
-    fontSize: 14,
+    fontSize: baseFont * 0.9,
     color: '#000',
     marginBottom: 10,
     fontWeight: 'bold',
   },
   resendHighlight: {
-    fontSize: 14,
+    fontSize: baseFont * 0.9,
     color: 'red',
     fontWeight: 'bold',
   },
   resentMessage: {
-    fontSize: 14,
+    fontSize: baseFont * 0.9,
     color: 'green',
     marginBottom: 20,
   },

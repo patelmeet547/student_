@@ -1,6 +1,16 @@
 import React from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity, SafeAreaView } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  Image,
+  TouchableOpacity,
+  SafeAreaView,
+  Dimensions,
+} from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
+
+const { width, height } = Dimensions.get('window');
 
 const OnboardingScreen = ({ navigation }) => {
   return (
@@ -8,7 +18,7 @@ const OnboardingScreen = ({ navigation }) => {
       <Text style={styles.title}>Student ERP</Text>
 
       <Image
-        source={require('D:/reactnative/student_erp/src/assets/img/classroom.jpg')}
+        source={require('../assets/img/classroom.jpg')}
         style={styles.image}
         resizeMode="cover"
       />
@@ -17,7 +27,10 @@ const OnboardingScreen = ({ navigation }) => {
         All-in-One Student Management System Dashboard for Modern Institutions.
       </Text>
 
-      <TouchableOpacity style={styles.buttonContainer} onPress={() => navigation.navigate('LoginScreen')}>
+      <TouchableOpacity
+        style={styles.buttonContainer}
+        onPress={() => navigation.replace('LoginScreen')}
+      >
         <LinearGradient
           colors={['#FB344B', '#FB344B']}
           start={{ x: 0, y: 0 }}
@@ -36,41 +49,41 @@ export default OnboardingScreen;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
-    paddingHorizontal: 24,
+    backgroundColor: '#f5f5f5',
+    paddingHorizontal: width * 0.06,
     justifyContent: 'center',
     alignItems: 'center',
   },
   title: {
-    fontSize: 32,
+    fontSize: width * 0.08, // ~32px
     fontWeight: 'bold',
-    marginBottom: 45,
+    marginBottom: height * 0.05,
     color: '#000',
   },
   image: {
-    width: 320,
-    height: 400,
+    width: width * 0.85, // 85% of screen width
+    height: height * 0.45, // 45% of screen height
     borderRadius: 10,
-    marginBottom: 25,
+    marginBottom: height * 0.03,
   },
   description: {
     textAlign: 'center',
-    fontSize: 14,
+    fontSize: width * 0.035, // ~14px
     color: '#000',
-    paddingHorizontal: 12,
-    marginBottom: 30,
+    paddingHorizontal: width * 0.05,
+    marginBottom: height * 0.04,
   },
   buttonContainer: {
     width: '100%',
   },
   gradientButton: {
-    paddingVertical: 14,
+    paddingVertical: height * 0.018, // ~14px
     borderRadius: 30,
     alignItems: 'center',
   },
   buttonText: {
     color: '#fff',
     fontWeight: 'bold',
-    fontSize: 16,
+    fontSize: width * 0.045, // ~16px
   },
 });

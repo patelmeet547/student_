@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -11,17 +11,26 @@ import {
   ToastAndroid,
   Alert,
   ScrollView,
-  Dimensions,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { useAuth } from '../../context/AuthContext';
 import GradientHeader from '../../components/GradientHeader';
 import GradientButton from '../../components/GradientButton';
-
-const { height } = Dimensions.get('window');
+import {
+  widthPercentageToDP as wp,
+  heightPercentageToDP as hp,
+} from 'react-native-responsive-screen';
 
 const LoginScreen = () => {
   const [mobile, setMobile] = useState('');
   const navigation = useNavigation();
+  const { isLoggedIn, userData } = useAuth();
+
+  useEffect(() => {
+    if (isLoggedIn && userData) {
+      navigation.replace('StudentDashboard');
+    }
+  }, [isLoggedIn, userData, navigation]);
 
   const handleGetOtp = () => {
     if (mobile.length !== 10) {
@@ -95,48 +104,51 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
   },
   scrollContainer: {
-    padding: 20,
+    padding: wp('5%'),
     justifyContent: 'center',
-    minHeight: height * 0.8,
+    minHeight: hp('80%'),
   },
   title: {
-    fontSize: 32,
-    marginBottom: 10,
+    fontSize: wp('8%'),
+    marginBottom: hp('1.5%'),
     color: '#000',
+    lineHeight: hp('5.5%'),
   },
   bold: {
     fontWeight: '700',
   },
   subtext: {
     color: '#555',
-    marginBottom: 30,
-    fontSize: 15,
+    marginBottom: hp('4%'),
+    fontSize: wp('4%'),
+    lineHeight: hp('3.2%'),
   },
   inputRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: hp('2.5%'),
   },
   countryCodeBox: {
     borderWidth: 1,
     borderColor: '#ccc',
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-    borderRadius: 8,
-    marginRight: 10,
+    paddingVertical: hp('1.5%'),
+    paddingHorizontal: wp('3.5%'),
+    borderRadius: wp('2%'),
+    marginRight: wp('3%'),
   },
   codeText: {
-    fontSize: 16,
-    borderColor: '#FB344B',
+    fontSize: wp('4%'),
+    color: '#000',
   },
   input: {
     flex: 1,
     borderWidth: 1,
     borderColor: '#ccc',
-    borderRadius: 8,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 16,
+    borderRadius: wp('2%'),
+    paddingHorizontal: wp('3.5%'),
+    paddingVertical: hp('1.5%'),
+    fontSize: wp('4%'),
+    color: '#000',
   },
 });
 
