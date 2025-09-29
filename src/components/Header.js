@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, TouchableOpacity, Text, StyleSheet } from 'react-native';
+import { View, TouchableOpacity, Text, StyleSheet, Image } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigation } from '@react-navigation/native';
@@ -18,40 +18,51 @@ const Header = ({
     navigation.navigate('SidebarScreen');
   };
 
+  const goToDashboard = () => {
+    navigation.navigate('StudentDashboard'); 
+  };
+
   return (
     <LinearGradient colors={gradientColors} style={styles.header}>
-      {/* Menu Button (Left) */}
       <TouchableOpacity onPress={openDrawer} style={styles.menuButton}>
         <Icon name="menu" size={wp('5.5%')} color="#000" />
       </TouchableOpacity>
-
-      {/* Title Text */}
-      <Text style={styles.portalText}>Student Portal</Text>
+      <View style={{ flex: 1 }} />
+      <TouchableOpacity onPress={goToDashboard} style={styles.logoContainer}>
+        <Image
+          source={require('../assets/img/logo.png')}
+          style={styles.logo}
+          resizeMode="contain"
+        />
+      </TouchableOpacity>
     </LinearGradient>
   );
 };
 
 const styles = StyleSheet.create({
   header: {
-    paddingTop: hp('6%'),               // responsive status bar space
-    paddingHorizontal: wp('4%'),        // left-right padding
-    paddingBottom: hp('2.5%'),          // bottom space
+    paddingTop: hp('6%'),
+    paddingHorizontal: wp('4%'),
+    paddingBottom: hp('2.5%'),
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-start', // Align items to the left
     borderBottomColor: '#ec6767ff',
-    borderBottomWidth: hp('0.15%'),     // responsive bottom border
+    borderBottomWidth: hp('0.15%'),
   },
   menuButton: {
-    padding: wp('2.5%'),                // responsive touch area
+    padding: wp('2.5%'),
     borderRadius: wp('5%'),
     borderWidth: 1,
     borderColor: '#FB344B',
   },
-  portalText: {
-    fontSize: wp('4.5%'),               // responsive font size
-    fontWeight: '600',
-    color: '#000',
+  logoContainer: {
+    alignItems: 'flex-end', // Align logo to the right
+    justifyContent: 'center',
+  },
+  logo: {
+    width: wp('25%'), // Adjust size as needed
+    height: hp('5%'),
   },
 });
 

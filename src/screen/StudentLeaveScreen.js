@@ -1,4 +1,3 @@
-// 📁 LeaveScreen.js
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -14,7 +13,8 @@ import {
   KeyboardAvoidingView,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import Ionicons from 'react-native-vector-icons/Ionicons';
+// import * as Notifications from 'expo-notifications';
+// import Ionicons from 'react-native-vector-icons/Ionicons';
 import CalendarPicker from 'react-native-calendar-picker';
 import { useNavigation } from '@react-navigation/native';
 import Header from '../components/Header';
@@ -27,6 +27,7 @@ const { width } = Dimensions.get('window');
 const LeaveScreen = () => {
   const navigation = useNavigation();
   const { userData } = useAuth();
+  const classId = userData?.classId;
 
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -39,38 +40,62 @@ const LeaveScreen = () => {
   const [calMode, setCalMode] = useState('start');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
 
   const [leaves, setLeaves] = useState([]);
 
+  // Fetch leaves function
+  const fetchLeaves = async () => {
+    if (!userData || !userData._id) {
+      setError('User ID not found');
+      setLoading(false);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const res = await fetch(`https://quantumflux.in:5001/user/${userData._id}/leave`);
+      
+      if (!res.ok) {
+        throw new Error(`HTTP error! status: ${res.status}`);
+      }
+      
+      const data = await res.json();
+      setLeaves(Array.isArray(data) ? data : []);
+      
+    } catch (err) {
+      console.error('Fetch leaves error:', err);
+      setError(err.message);
+      setLeaves([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Initial fetch
   useEffect(() => {
-    const fetchLeaves = async () => {
-      if (!userData || !userData._id) {
-        setError('User ID not found');
-        setLoading(false);
-        return;
-      }
-      try {
-        const res = await fetch(`https://quantumflux.in:5001/user/${userData._id}/leave`);
-        if (!res.ok) throw new Error('Failed to fetch leaves');
-        const data = await res.json();
-        setLeaves(data);
-      } catch (err) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchLeaves();
   }, [userData]);
 
-  const formatDate = (d) =>
-    d
-      ? new Intl.DateTimeFormat('en-GB', {
-          day: '2-digit',
-          month: 'long',
-          year: 'numeric',
-        }).format(new Date(d))
-      : '';
+  // useEffect(() => {
+  //   Notifications.requestPermissionsAsync();
+  // }, []);
+
+  const formatDate = (d) => {
+    if (!d) return '';
+    try {
+      return new Intl.DateTimeFormat('en-GB', {
+        day: '2-digit',
+        month: 'long',
+        year: 'numeric',
+      }).format(new Date(d));
+    } catch (error) {
+      console.error('Date formatting error:', error);
+      return '';
+    }
+  };
 
   const showSuccessMessage = (msg) => {
     if (Platform.OS === 'android') {
@@ -95,8 +120,8 @@ const LeaveScreen = () => {
 
   const openForm = (leave = null) => {
     if (leave) {
-      setReason(leave.title);
-      setDescription(leave.description);
+      setReason(leave.title || '');
+      setDescription(leave.description || '');
       setStartDate(leave.startDate);
       setEndDate(leave.endDate);
       setEditingId(leave._id);
@@ -111,111 +136,190 @@ const LeaveScreen = () => {
     setShowForm(true);
   };
 
-  // CREATE or UPDATE leave
+  const closeForm = () => {
+    setShowForm(false);
+    setEditingId(null);
+    setReason('');
+    setDescription('');
+    setStartDate(null);
+    setEndDate(null);
+    setCalendarVisible(false);
+    setMenuOpenId(null);
+  };
+
   const handleSave = async () => {
-    if (!reason || !startDate || !endDate) {
-      Alert.alert('Error', 'Please fill all fields');
+    if (!reason.trim() || !startDate || !endDate) {
+      Alert.alert('Error', 'Please fill all required fields');
       return;
     }
+
+    if (!classId) {
+      Alert.alert('Error', 'Class ID not found');
+      return;
+    }
+
     try {
-      let url = `https://quantumflux.in:5001/user/${userData._id}/leave`;
+      setSubmitting(true);
+
+      let url = `https://quantumflux.in:5001/class/${classId}/leave`;
       let method = 'POST';
+
+      // If editing, use POST with leave id in the URL
       if (editingId) {
-        url += `/${editingId}`;
-        // method = 'PUT'; // Try PUT if POST fails for update
-        // method = 'PATCH'; // Try PATCH if needed
-        method = 'POST'; // Default: POST (as per your Postman)
+        url = `https://quantumflux.in:5001/class/${classId}/leave/${editingId}`;
+        method = 'POST';
       }
+
       const body = {
-        title: reason,
-        description,
+        title: reason.trim(),
+        description: description.trim(),
         startDate,
         endDate,
       };
+
       const res = await fetch(url, {
         method,
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
         body: JSON.stringify(body),
       });
-      if (!res.ok && res.status !== 204) {
-        let errMsg = 'Failed to save leave';
+
+      if (res.ok || res.status === 204) {
+        showSuccessMessage('Your leave has been added successfully');
+        // showLocalNotification('Leave Applied', 'Your leave request has been submitted!');
+        closeForm();
+        await fetchLeaves();
+      } else {
+        let errorMessage = 'Failed to save leave';
         try {
-          const errJson = await res.clone().json();
-          errMsg = errJson.message || JSON.stringify(errJson);
-        } catch (e) {
-          const errText = await res.text();
-          errMsg = errText;
+          const contentType = res.headers.get('content-type');
+          if (contentType && contentType.includes('application/json')) {
+            const errorData = await res.json();
+            errorMessage = errorData.message || errorData.error || JSON.stringify(errorData);
+          } else {
+            const errorText = await res.text();
+            if (errorText.includes('<html>') || errorText.includes('DOCTYPE')) {
+              errorMessage = `Server error (${res.status}). Please try again.`;
+            } else {
+              errorMessage = errorText || errorMessage;
+            }
+          }
+        } catch (parseError) {
+          errorMessage = `Server error (${res.status}). Please try again.`;
         }
-        Alert.alert('Error', errMsg);
-        setLoading(false);
-        return;
+        Alert.alert('Error', errorMessage);
       }
-      showSuccessMessage(editingId ? 'Your leave has been updated successfully' : 'Your leave has been added successfully');
-      setShowForm(false);
-      setEditingId(null);
-      setMenuOpenId(null);
-      // Refresh leave list
-      setLoading(true);
-      setError(null);
-      const leavesRes = await fetch(`https://quantumflux.in:5001/user/${userData._id}/leave`);
-      const leavesData = await leavesRes.json();
-      setLeaves(leavesData);
-      setLoading(false);
-      setMenuOpenId(null); 
     } catch (err) {
-      Alert.alert('Error', err.message);
+      Alert.alert('Error', `Network error: ${err.message}`);
+    } finally {
+      setSubmitting(false);
     }
   };
 
-  // DELETE leave
   const handleDelete = async (id) => {
-    Alert.alert('Delete', 'Are you sure you want to delete this leave?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            const res = await fetch(`https://quantumflux.in:5001/user/${userData._id}/leave/${id}`, {
-              method: 'DELETE',
-              headers: { 'Content-Type': 'application/json' },
-            });
-            if (!res.ok && res.status !== 204) throw new Error('Failed to delete leave');
-            showSuccessMessage('Your leave has been deleted successfully');
-            // Refresh leave list
-            setLoading(true);
-            setError(null);
-            const leavesRes = await fetch(`https://quantumflux.in:5001/user/${userData._id}/leave`);
-            const leavesData = await leavesRes.json();
-            setLeaves(leavesData);
-            setLoading(false); // <-- fix: stop loading after delete
-            setMenuOpenId(null); // <-- fix: close menu after delete
-          } catch (err) {
-            Alert.alert('Error', err.message);
-          }
+    Alert.alert(
+      'Delete Leave', 
+      'Are you sure you want to delete this leave?', 
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setLoading(true);
+              
+              const res = await fetch(
+                `https://quantumflux.in:5001/class/${classId}/leave/${id}`, 
+                {
+                  method: 'DELETE',
+                  headers: { 
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                  },
+                }
+              );
+
+              if (res.ok || res.status === 204) {
+                showSuccessMessage('Your leave has been deleted successfully');
+                setMenuOpenId(null);
+                // Refresh the list
+                await fetchLeaves();
+              } else {
+                let errorMessage = 'Failed to delete leave';
+                try {
+                  const contentType = res.headers.get('content-type');
+                  if (contentType && contentType.includes('application/json')) {
+                    const errorData = await res.json();
+                    errorMessage = errorData.message || errorData.error || JSON.stringify(errorData);
+                  } else {
+                    const errorText = await res.text();
+                    if (errorText.includes('<html>') || errorText.includes('DOCTYPE')) {
+                      errorMessage = `Server error (${res.status}). Please try again.`;
+                    } else {
+                      errorMessage = errorText || errorMessage;
+                    }
+                  }
+                } catch (parseError) {
+                  errorMessage = `Server error (${res.status}). Please try again.`;
+                }
+                Alert.alert('Error', errorMessage);
+              }
+
+            } catch (err) {
+              console.error('Delete error:', err);
+              Alert.alert('Error', `Network error: ${err.message}`);
+            } finally {
+              setLoading(false);
+            }
+          },
         },
-      },
-    ]);
+      ]
+    );
   };
 
-  if (loading) {
+  // const showLocalNotification = (title, body) => {
+  //   Notifications.scheduleNotificationAsync({
+  //     content: {
+  //       title,
+  //       body,
+  //       sound: true,
+  //     },
+  //     trigger: null, // Show immediately
+  //   });
+  // };
+
+  if (loading && leaves.length === 0) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+      <View style={styles.loadingContainer}>
         <SimpleLoader />
       </View>
     );
   }
-  if (error) {
+
+  if (error && leaves.length === 0) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <Text>Error: {error}</Text>
+      <View style={styles.errorContainer}>
+        <Text style={styles.errorText}>Error: {error}</Text>
+        <TouchableOpacity style={styles.retryButton} onPress={fetchLeaves}>
+          <Text style={styles.retryText}>Retry</Text>
+        </TouchableOpacity>
       </View>
     );
   }
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 40 }}>
+    <KeyboardAvoidingView 
+      style={{ flex: 1 }} 
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
+      <ScrollView 
+        style={styles.container} 
+        contentContainerStyle={{ paddingBottom: 40 }}
+        keyboardShouldPersistTaps="handled"
+      >
         <View style={styles.topNav}>
           <Header
             onMenuPress={() => navigation.openDrawer()}
@@ -225,22 +329,30 @@ const LeaveScreen = () => {
 
         <Text style={styles.title}>Leaves</Text>
 
-        <TouchableOpacity style={styles.applyBtn} onPress={() => openForm()}>
+        <TouchableOpacity 
+          style={[styles.applyBtn, submitting && styles.disabledBtn]} 
+          onPress={() => openForm()}
+          disabled={submitting}
+        >
           <Text style={styles.applyBtnText}>Apply For Leave</Text>
         </TouchableOpacity>
 
         {showForm && (
           <View style={styles.formCard}>
-            <Text style={styles.formTitle}>{editingId ? 'Update Leave' : 'Ask for Leave'}</Text>
+            <Text style={styles.formTitle}>
+              {editingId ? 'Update Leave' : 'Ask for Leave'}
+            </Text>
             <View style={styles.divider} />
 
-            <Text style={styles.label}>Reason</Text>
+            <Text style={styles.label}>Reason *</Text>
             <TextInput
               style={styles.input}
               placeholder="Write your reason for leave"
               value={reason}
               onFocus={() => setCalendarVisible(false)}
               onChangeText={setReason}
+              editable={!submitting}
+              placeholderTextColor={'grey'}
             />
 
             <Text style={styles.label}>Description</Text>
@@ -251,43 +363,53 @@ const LeaveScreen = () => {
               onFocus={() => setCalendarVisible(false)}
               value={description}
               onChangeText={setDescription}
+              editable={!submitting}
+              placeholderTextColor={'grey'}
             />
 
-            <Text style={styles.label}>Start On</Text>
+            <Text style={styles.label}>Start Date *</Text>
             <TouchableOpacity
               onPress={() => {
-                setCalendarVisible(true);
-                setCalMode('start');
+                if (!submitting) {
+                  setCalendarVisible(true);
+                  setCalMode('start');
+                }
               }}
-              style={styles.dateField}
+              style={[styles.dateField, submitting && styles.disabledField]}
+              disabled={submitting}
             >
               <TextInput
                 style={styles.dateInput}
                 placeholder="Start date"
                 value={formatDate(startDate)}
                 editable={false}
+                placeholderTextColor={'grey'}
               />
               <Icon name="calendar" size={20} color="#FF3B30" />
             </TouchableOpacity>
 
-            <Text style={styles.label}>End On</Text>
+            <Text style={styles.label}>End Date *</Text>
             <TouchableOpacity
               onPress={() => {
-                setCalendarVisible(true);
-                setCalMode('end');
+                if (!submitting) {
+                  setCalendarVisible(true);
+                  setCalMode('end');
+                }
               }}
-              style={styles.dateField}
+              style={[styles.dateField, submitting && styles.disabledField]}
+              disabled={submitting}
             >
               <TextInput
                 style={styles.dateInput}
                 placeholder="End date"
                 value={formatDate(endDate)}
                 editable={false}
+                placeholderTextColor={'grey'}
               />
               <Icon name="calendar" size={20} color="#FF3B30" />
             </TouchableOpacity>
 
-            {calendarVisible && (
+            {calendarVisible && !submitting && (
               <CalendarPicker
                 startFromMonday
                 minDate={calMode === 'end' && startDate ? new Date(startDate) : new Date()}
@@ -297,78 +419,130 @@ const LeaveScreen = () => {
             )}
 
             <View style={styles.buttonRow}>
-              <TouchableOpacity style={styles.cancelBtn} onPress={() => setShowForm(false)}>
+              <TouchableOpacity 
+                style={[styles.cancelBtn, submitting && styles.disabledBtn]} 
+                onPress={closeForm}
+                disabled={submitting}
+              >
                 <Text style={styles.cancelText}>Cancel</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.applyBtnCard} onPress={handleSave}>
-                <Text style={styles.applyBtnTextCard}>{editingId ? 'Update' : 'Apply'}</Text>
+              <TouchableOpacity 
+                style={[styles.applyBtnCard, submitting && styles.disabledBtn]} 
+                onPress={handleSave}
+                disabled={submitting}
+              >
+                <Text style={styles.applyBtnTextCard}>
+                  {submitting ? 'Please wait...' : (editingId ? 'Update' : 'Apply')}
+
+                </Text>
               </TouchableOpacity>
             </View>
           </View>
         )}
 
+        {loading && leaves.length > 0 && (
+          <View style={styles.refreshing}>
+            <Text>Refreshing...</Text>
+          </View>
+        )}
+
         <Text style={styles.subtitle}>Recent</Text>
-        {leaves.map((item) => {
-          // Format date as '26 - 29 June, 2025' or '26 June, 2025'
-          let dateText = '';
-          if (item.startDate && item.endDate && item.startDate !== item.endDate) {
-            const start = new Date(item.startDate);
-            const end = new Date(item.endDate);
-            if (start.getMonth() === end.getMonth() && start.getFullYear() === end.getFullYear()) {
-              dateText = `${start.getDate()} - ${end.getDate()} ${start.toLocaleString('default', { month: 'long' })}, ${start.getFullYear()}`;
-            } else {
-              dateText = `${formatDate(item.startDate)} - ${formatDate(item.endDate)}`;
+        
+        {leaves.length === 0 && !loading ? (
+          <View style={styles.noDataContainer}>
+            <Text style={styles.noDataText}>No leaves found</Text>
+          </View>
+        ) : (
+          leaves.map((item) => {
+            if (!item || !item._id) return null;
+
+            let dateText = '';
+            if (item.startDate && item.endDate && item.startDate !== item.endDate) {
+              try {
+                const start = new Date(item.startDate);
+                const end = new Date(item.endDate);
+                if (start.getMonth() === end.getMonth() && start.getFullYear() === end.getFullYear()) {
+                  dateText = `${start.getDate()} - ${end.getDate()} ${start.toLocaleString('default', { month: 'long' })}, ${start.getFullYear()}`;
+                } else {
+                  dateText = `${formatDate(item.startDate)} - ${formatDate(item.endDate)}`;
+                }
+              } catch (error) {
+                dateText = 'Invalid date';
+              }
+            } else if (item.startDate) {
+              try {
+                const start = new Date(item.startDate);
+                dateText = `${start.getDate()} ${start.toLocaleString('default', { month: 'long' })}, ${start.getFullYear()}`;
+              } catch (error) {
+                dateText = 'Invalid date';
+              }
             }
-          } else if (item.startDate) {
-            const start = new Date(item.startDate);
-            dateText = `${start.getDate()} ${start.toLocaleString('default', { month: 'long' })}, ${start.getFullYear()}`;
-          }
-          // Show APPROVED badge only if approvedBy key exists and is not null/empty
-          const isApproved = item.approvedBy && Object.keys(item.approvedBy).length > 0;
-          return (
-            <View key={item._id} style={styles.card}>
-              <View style={styles.cardHeader}>
-                <Text style={styles.cardDate}>Leave Date: {dateText}</Text>
-                {isApproved ? (
-                  // Static 3-dot icon (disabled look)
-                  <Icon name="dots-vertical" size={22} color="#ccc" style={{ padding: 4, opacity: 0.5 }} />
-                ) : (
-                  <TouchableOpacity onPress={() => setMenuOpenId(menuOpenId === item._id ? null : item._id)}>
-                    <Icon name="dots-vertical" size={22} color="#FF3B30" style={{ padding: 4 }} />
-                  </TouchableOpacity>
-                )}
-                {isApproved && (
-                  <View style={[styles.statusBadge, { backgroundColor: '#fff', borderWidth: 1, borderColor: '#FF3B30', marginLeft: 8 }]}> 
-                    <Text style={[styles.statusText, { color: '#FF3B30', fontWeight: 'bold', fontSize: 12 }]}>APPROVED</Text>
+
+            const isApproved = item.approvedBy && Object.keys(item.approvedBy).length > 0;
+            
+            return (
+              <View key={item._id} style={styles.card}>
+                <View style={styles.cardHeader}>
+                  <Text style={styles.cardDate}>Leave Date: {dateText}</Text>
+                  {isApproved ? (
+                    <View style={[styles.statusBadge, { backgroundColor: '#fff', borderWidth: 1, borderColor: '#FF3B30', marginLeft: 8 }]}> 
+                      <Text style={[styles.statusText, { color: '#FF3B30', fontWeight: 'bold', fontSize: 12 }]}>APPROVED</Text>
+                    </View>
+                  ) : (
+                    <>
+                    <TouchableOpacity 
+                      onPress={() => setMenuOpenId(menuOpenId === item._id ? null : item._id)}
+                      disabled={submitting}
+                    >
+                      <Icon name="dots-vertical" size={22} color="#FF3B30" style={{ padding: 4 }} />
+                    </TouchableOpacity>
+                    </>
+                  )}
+                  {/* {isApproved && (
+                  )} */}
+                </View>
+                
+                <View style={styles.dividerThin} />
+                
+                <Text style={styles.cardReason}>{item.title || 'No reason provided'}</Text>
+                <Text style={styles.cardDesc}>
+                  <Text style={{ fontWeight: 'bold' }}>Description:</Text> {item.description || 'No description provided'}
+                </Text>
+                
+                {!isApproved && menuOpenId === item._id && (
+                  <View style={[styles.menu, { right: 0, position: 'absolute', top: 40, zIndex: 10 }]}> 
+                    <TouchableOpacity 
+                      onPress={() => openForm(item)}
+                      disabled={submitting}
+                    >
+                      <Text style={styles.menuText}>Edit</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity 
+                      onPress={() => handleDelete(item._id)}
+                      disabled={submitting}
+                    >
+                      <Text style={[styles.menuText, { color: 'red' }]}>Delete</Text>
+                    </TouchableOpacity>
                   </View>
                 )}
               </View>
-              <View style={styles.dividerThin} />
-              <Text style={styles.cardReason}>{item.title}</Text>
-              <Text style={styles.cardDesc}>
-                <Text style={{ fontWeight: 'bold' }}>Description:</Text> {item.description}
-              </Text>
-              {/* Only show menu if NOT approved */}
-              {!isApproved && menuOpenId === item._id && (
-                <View style={[styles.menu, { right: 0, position: 'absolute', top: 40, zIndex: 10 }]}> 
-                  <TouchableOpacity onPress={() => openForm({
-                    ...item,
-                    reason: item.title,
-                    rawStart: item.startDate,
-                    rawEnd: item.endDate,
-                    id: item._id,
-                  })}>
-                    <Text style={styles.menuText}>Edit</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity onPress={() => handleDelete(item._id)}>
-                    <Text style={[styles.menuText, { color: 'red' }]}>Delete</Text>
-                  </TouchableOpacity>
-                </View>
-              )}
-            </View>
-            
-          );
-        })}
+            );
+          })
+        )}
+
+        {/* <TouchableOpacity
+          style={{ margin: 20, backgroundColor: '#FF3B30', padding: 10, borderRadius: 10 }}
+          onPress={() => Notifications.scheduleNotificationAsync({
+            content: {
+              title: 'Test Notification',
+              body: 'This is a test!',
+              sound: true,
+            },
+            trigger: null,
+          })}
+        >
+          <Text style={{ color: '#fff', textAlign: 'center' }}>Send Test Notification</Text>
+        </TouchableOpacity> */}
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -377,7 +551,7 @@ const LeaveScreen = () => {
 const styles = StyleSheet.create({
   container: { backgroundColor: '#f5f5f5', flex: 1 },
   topNav: { marginBottom: 16 },
-  title: { fontSize: 22, fontWeight: 'bold', margin : 20 },
+  title: { fontSize: 22, fontWeight: 'bold', margin: 20 },
 
   applyBtn: {
     backgroundColor: '#FF3B30',
@@ -396,6 +570,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#e5e5e5',
     marginBottom: 20,
+    marginHorizontal: 20,
   },
   formTitle: { textAlign: 'center', fontSize: 18, fontWeight: 'bold', marginBottom: 8 },
   divider: { height: 2, backgroundColor: '#FF3B30', width: '20%', alignSelf: 'center', marginBottom: 16 },
@@ -487,8 +662,64 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     borderColor: '#ccc',
     borderWidth: 1,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 3,
+    elevation: 3,
   },
   menuText: { paddingVertical: 4, fontSize: 14 },
+
+  // Additional styles for error handling and loading states
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f5f5f5',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f5f5f5',
+    padding: 20,
+  },
+  errorText: {
+    fontSize: 16,
+    color: '#FF3B30',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  retryButton: {
+    backgroundColor: '#FF3B30',
+    borderRadius: 25,
+    paddingVertical: 12,
+    paddingHorizontal: 30,
+  },
+  retryText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
+  disabledBtn: {
+    opacity: 0.6,
+  },
+  disabledField: {
+    opacity: 0.6,
+  },
+  refreshing: {
+    alignItems: 'center',
+    paddingVertical: 10,
+  },
+  noDataContainer: {
+    alignItems: 'center',
+    paddingVertical: 40,
+  },
+  noDataText: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
+  },
 });
 
 export default LeaveScreen;

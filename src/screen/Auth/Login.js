@@ -33,6 +33,12 @@ const LoginScreen = () => {
   }, [isLoggedIn, userData, navigation]);
 
   const handleGetOtp = () => {
+    fetch('https://quantumflux.in:5001/auth/login/request', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ phone: mobile }),
+    credentials: 'include',
+  })
     if (mobile.length !== 10) {
       Alert.alert('Invalid Number', 'Please enter a valid 10-digit mobile number.');
       return;

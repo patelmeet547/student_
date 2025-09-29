@@ -1,8 +1,8 @@
-// Real OTP verification and user fetch
+
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export const verifyOtp = async (mobile, otp) => {
-  // 1. Verify OTP
+
   const verifyRes = await fetch('https://quantumflux.in:5001/auth/login/verify', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -21,7 +21,7 @@ export const verifyOtp = async (mobile, otp) => {
     throw new Error(verifyJson.message || 'OTP verification failed');
   }
 
-  // 2. Fetch user data
+
   const userRes = await fetch('https://quantumflux.in:5001/user/me', {
     method: 'GET',
     headers: { 'Content-Type': 'application/json' },

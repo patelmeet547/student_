@@ -1,4 +1,3 @@
-// AnnouncementScreen.js
 import React, { useEffect, useState } from 'react';
 import {
   View,
@@ -25,14 +24,15 @@ const AnnouncementScreen = () => {
   const { width } = useWindowDimensions();
 
   useEffect(() => {
+    console.log('userData:', userData); 
     const fetchAnnouncements = async () => {
-      if (!userData?.class?._id) {
+      if (!userData?.classId) {
         setError('User class ID not found');
         setLoading(false);
         return;
       }
       try {
-        const res = await fetch(`https://quantumflux.in:5001/class/${userData.class._id}/announcement`);
+        const res = await fetch(`https://quantumflux.in:5001/class/${userData.classId}/announcement`);
         if (!res.ok) throw new Error('Failed to fetch announcements');
         const data = await res.json();
         setAnnouncements(data);
@@ -45,10 +45,18 @@ const AnnouncementScreen = () => {
     fetchAnnouncements();
   }, [userData]);
 
-  if (loading || error) {
+  if (loading) {
     return (
       <View style={styles.centered}>
-        <SimpleLoader />
+        {/* <SimpleLoader /> */}
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={styles.centered}>
+        <Text style={{ color: 'red', fontSize: 16, textAlign: 'center' }}>{error}</Text>
       </View>
     );
   }
@@ -79,7 +87,7 @@ const AnnouncementCard = ({ item }) => {
       </View>
       {expanded && (
         <Text style={styles.cardDescription}>
-          {/* <Text style={styles.descLabel}>Description: </Text> */}
+       
           {item.description}
         </Text>
       )}

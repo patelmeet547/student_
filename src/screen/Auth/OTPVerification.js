@@ -73,8 +73,8 @@ const OTPVerification = () => {
             {
               text: 'OK',
               onPress: () => {
-                // Navigate back to login or initial screen
-                navigation.navigate('Login'); // or navigation.goBack();
+                
+                navigation.navigate('Login'); 
               }
             }
           ]
@@ -86,11 +86,35 @@ const OTPVerification = () => {
     }
   };
 
-  const handleResend = () => {
+const handleResend = async () => {
+  try {
     setTimer(32);
     setShowResentMessage(true);
+
+    const response = await fetch('https://quantumflux.in:5001/auth/login/request', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone: mobile }),
+      credentials: 'include',
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to resend OTP');
+    }
+
+    // ✅ Optional: backend response handle કરો
+    const data = await response.json();
+    console.log('Resend OTP response:', data);
+
+    // 2 seconds પછી message hide
     setTimeout(() => setShowResentMessage(false), 2000);
-  };
+
+  } catch (error) {
+    console.error(error);
+    // Alert.alert('Error', error.message || 'Something went wrong while resending OTP');
+    setShowResentMessage(false);
+  }
+};
 
   const renderOtpInputs = () =>
     otp.map((digit, index) => (
@@ -229,3 +253,30 @@ const styles = StyleSheet.create({
 });
 
 export default OTPVerification;
+
+// Example usage: sendOtpToNumber('9876543210', '1234')
+
+async function sendOtpToNumber(mobile, otp) {
+  const apiKey = 'aB3NPwUSes7EToy1YJCpdcgk2FXQ05ntRvqZWfmhHixAGMV9Ij8yphilZRWD3gctLfxE97qus2mT4JGY';
+  const senderId = '';
+  const message = `Your OTP is ${otp}`;
+  const url = `https://www.fast2sms.com/dev/bulkV2?authorization=${apiKey}&route=dlt&sender_id=${senderId}&message=${encodeURIComponent(message)}&variables_values=${otp}&flash=0&numbers=${mobile}&schedule_time=`;
+
+  try {
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json'
+      }
+    });
+    const result = await response.json();
+    console.log('Fast2SMS response:', result);
+    if (result.return === true) {
+      Alert.alert('OTP sent successfully!');
+    } else {
+      Alert.alert('Failed to send OTP: ' + (result.message || 'Unknown error'));
+    }
+  } catch (error) {
+    Alert.alert('Error sending OTP: ' + error.message);
+  }
+}

@@ -24,14 +24,16 @@ const HomeworkScreen = () => {
   const [error, setError] = useState(null);
 
   useEffect(() => {
+
+  console.log('userData:', userData); 
     const fetchHomework = async () => {
-      if (!userData?.class?._id) {
+      if (!userData?.classId) {
         setError('User class ID not found');
         setLoading(false);
         return;
       }
       try {
-        const res = await fetch(`https://quantumflux.in:5001/class/${userData.class._id}/homework`);
+        const res = await fetch(`https://quantumflux.in:5001/class/${userData.classId}/homework`);
         if (!res.ok) throw new Error('Failed to fetch homework');
         const data = await res.json();
         setHomeworkList(data);
@@ -91,7 +93,7 @@ const HomeworkCard = ({ item }) => {
       </View>
       {expanded && (
         <Text style={styles.cardDescription}>
-          {/* <Text style={styles.descLabel}>Description: </Text> */}
+        
           {item.description}
         </Text>
       )}

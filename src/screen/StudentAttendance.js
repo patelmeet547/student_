@@ -34,7 +34,9 @@ const CalendarBar = ({ label, onPrev, onNext }) => (
 const StudentAttendance = () => {
   const navigation = useNavigation();
   const { userData } = useAuth();
-  
+
+
+
   // Single month state for all three components
   const [currentMonth, setCurrentMonth] = useState(moment());
   const [attendanceData, setAttendanceData] = useState([]);
@@ -42,14 +44,16 @@ const StudentAttendance = () => {
   const [error, setError] = useState(null);
 
   useEffect(() => {
+    console.log(userData);
     const fetchAnnouncements = async () => {
-      if (!userData?.class?._id) {
-        setError('User class ID not found');
+      if (!userData?._id) {
+
+        setError('User ID not found');
         setLoading(false);
         return;
       }
       try {
-        const res = await fetch(`https://quantumflux.in:5001/class/${userData.class._id}/attendance`);
+        const res = await fetch(`https://quantumflux.in:5001/user/${userData._id}/attendance`);
         if (!res.ok) throw new Error('Failed to fetch attendance');
         const data = await res.json();
         setAttendanceData(data);
@@ -66,7 +70,7 @@ const StudentAttendance = () => {
   const canNavigateToNextMonth = (monthMoment) => {
     const nextMonth = moment(monthMoment).add(1, 'month');
     const currentDate = moment();
-    
+
     // Allow navigation if next month is current month or before current month
     return nextMonth.isSameOrBefore(currentDate, 'month');
   };
@@ -81,7 +85,6 @@ const StudentAttendance = () => {
       setCurrentMonth((prev) => moment(prev).add(1, 'month'));
     }
   };
-
   const getMonthAttendanceDays = (monthMoment) => {
     const daysInMonth = monthMoment.daysInMonth();
     const currentDate = moment();
@@ -106,6 +109,7 @@ const StudentAttendance = () => {
 
       let status = null;
 
+      // ✅ Only till today’s date
       if (dateObj.isSameOrBefore(currentDate, 'day')) {
         if (records.length > 0) {
           const attendanceStatus = records[0].present;
@@ -117,19 +121,21 @@ const StudentAttendance = () => {
         }
       }
 
-      days.push({
-        date: d,
-        status,
-        _id: dayKey,
-        isFuture: dateObj.isAfter(currentDate, 'day'),
-      });
+      // ❌ Ignore Holidays completely (status=null means skip)
+      if (status) {
+        days.push({
+          date: d,
+          status,
+          _id: dayKey,
+        });
+      }
     }
     return days;
   };
 
   // Using same month for all components
   const calendarAttendance = getMonthAttendanceDays(currentMonth);
-  
+
   // Donut chart - only count past and current dates
   const chartAttendance = getMonthAttendanceDays(currentMonth).filter(day => !day.isFuture);
   const presentCount = chartAttendance.filter((d) => d.status === 'Present').length;
@@ -286,7 +292,7 @@ const StudentAttendance = () => {
     const mid = Math.ceil(tableAttendance.length / 2);
     const left = tableAttendance.slice(0, mid);
     const right = tableAttendance.slice(mid);
-    
+
     return (
       <View style={styles.card}>
         <CalendarBar
@@ -302,16 +308,18 @@ const StudentAttendance = () => {
             </View>
             {left.map(({ _id, date, status }) => (
               <View style={styles.tableRow} key={`l-${_id}`}>
-                <Text style={[
-                  styles.cell, 
-                  { 
-                    color: status === 'Present' ? 'green' : 
-                           status === 'Absent' ? 'red' : 'black'
-                  }
-                ]}>{status || 'Holiday'}</Text>
+                <Text
+                  style={[
+                    styles.cell,
+                    { color: status === 'Present' ? 'green' : status === 'Absent' ? 'red' : 'black' }
+                  ]}
+                >
+                  {status}
+                </Text>
                 <Text style={styles.cell}>{date}</Text>
               </View>
             ))}
+
           </View>
           <View style={styles.verticalDivider} />
           <View>
@@ -323,10 +331,10 @@ const StudentAttendance = () => {
               <View style={styles.tableRow} key={`r-${_id}`}>
                 <Text style={styles.cell}>{date}</Text>
                 <Text style={[
-                  styles.cell, 
-                  { 
-                    color: status === 'Present' ? 'green' : 
-                           status === 'Absent' ? 'red' : 'black'
+                  styles.cell,
+                  {
+                    color: status === 'Present' ? 'green' :
+                      status === 'Absent' ? 'red' : 'black'
                   }
                 ]}>{status || 'Holiday'}</Text>
               </View>
@@ -386,7 +394,7 @@ const StudentAttendance = () => {
             <View style={styles.legend}>
               {chartData.map((item, i) => {
                 const pct = item.key === 'Present' ? presentPct : absentPct;
-                
+
                 return (
                   <View key={i} style={styles.legendRow}>
                     <View style={styles.legendLeft}>
